@@ -1,0 +1,270 @@
+package solution;
+import java.io.BufferedReader; 
+import java.io.IOException;
+import java.lang.reflect.Array;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+import baseclasses.Aircraft;
+import baseclasses.Aircraft.Manufacturer;
+import baseclasses.DataLoadingException;
+import baseclasses.IAircraftDAO;
+
+
+/**
+ * The AircraftDAO class is responsible for loading aircraft data from CSV files
+ * and contains methods to help the system find aircraft when scheduling
+ */
+public class AircraftDAO implements IAircraftDAO 
+{
+	List <Aircraft> aircraft = new ArrayList<Aircraft>(); 
+	
+	/**
+	 * Loads the aircraft data from the specified file, adding them to the currently loaded aircraft
+	 * Multiple calls to this function, perhaps on different files, would thus be cumulative
+	 * @param p A Path pointing to the file from which data could be loaded
+	 * @return 
+	 * @throws DataLoadingException if anything goes wrong. The exception's "cause" indicates the underlying exception
+     *
+	 * Initially, this contains some starter code to help you get started in reading the CSV file...
+	 */
+	@Override
+	public void loadAircraftData(Path p) throws DataLoadingException 
+	{	
+		try 
+		{
+			//open the file
+			BufferedReader reader = Files.newBufferedReader(p);
+			
+			//read the file line by line
+			String line = "";
+			
+			//skip the first line of the file - headers
+			reader.readLine();
+			
+			while((line = reader.readLine()) != null)
+			{
+				//each line has fields separated by commas, split into an array of fields
+				String[] fields = line.split(",");
+				
+				//put some of the fields into variables: check which fields are where atop the CSV file itself
+				String tailcode = fields[0];
+				String type = fields[1];		
+				String model = fields[3];
+			    int seats = Integer.parseInt(fields[4]);
+			    int crew = Integer.parseInt(fields[5]);
+			    String position = fields[6];
+			    
+			    //Create Aircraft object
+				Aircraft a = new Aircraft(); 
+				a.setTailCode(tailcode);
+				a.setTypeCode(type);
+				a.setModel(model);
+				a.setSeats(seats);
+				a.setCabinCrewRequired(crew);
+				a.setStartingPosition(position);
+				
+				if (fields[2].equals("Boeing"))
+				{
+					a.setManufacturer(Manufacturer.BOEING);
+				}
+				
+				else if (fields[2].equals("Airbus"))
+				{
+					a.setManufacturer(Manufacturer.AIRBUS);
+				}
+					
+				else if (fields[2].equals("Fokker"))
+				{
+					a.setManufacturer(Manufacturer.FOKKER); 
+				}
+					
+				else if (fields[2].equals("Embraer"))
+				{
+					a.setManufacturer(Manufacturer.EMBRAER); 
+				}
+					
+			    else if (fields[2].equals("Bombardier"))
+				{
+			    	a.setManufacturer(Manufacturer.BOMBARDIER); 
+				}
+				
+				aircraft.add(a);		
+				
+			}
+		}
+		
+		catch (IOException ioe) 
+		{
+			//There was a problem reading the file
+			throw new DataLoadingException(ioe);
+		}
+		
+	}
+
+
+	/**
+	 * Returns a list of all the loaded Aircraft with at least the specified number of seats
+	 * @param seats the number of seats required
+	 * @return a List of all the loaded aircraft with at least this many seats
+	 */
+	@Override
+	public List<Aircraft> findAircraftBySeats(int seats) 
+	{ 		
+		List<Aircraft> aircraftWithReqSeats = new ArrayList<Aircraft>();
+		
+		for (Aircraft aircrafts : aircraft)
+		{
+			if (aircrafts.getSeats() >= seats)
+			{
+				System.out.println("Tailcode= " + aircrafts.getTailCode());
+				System.out.println("Typecode= " + aircrafts.getTypeCode());
+				System.out.println("Manufacturer= " + aircrafts.getManufacturer());
+				System.out.println("Model= " + aircrafts.getModel()); 
+				System.out.println("Number of seats= " + aircrafts.getSeats());
+				System.out.println("Cabin crew required= " + aircrafts.getCabinCrewRequired());
+				System.out.println("Starting posistion= " + aircrafts.getStartingPosition());
+				System.out.println("");
+				
+				aircraftWithReqSeats.add(aircrafts);
+			}
+		}
+		
+		return aircraftWithReqSeats;
+	}
+
+	/**
+	 * Returns a list of all the loaded Aircraft that start at the specified airport code
+	 * @param startingPosition the three letter airport code of the airport at which the desired aircraft start
+	 * @return a List of all the loaded aircraft that start at the specified airport
+	 */
+	@Override
+	public List<Aircraft> findAircraftByStartingPosition(String startingPosition)
+	{
+		List<Aircraft> aircraftWithReqPosistion = new ArrayList<Aircraft>();
+		
+		for (Aircraft aircrafts : aircraft)
+		{
+			if (aircrafts.getStartingPosition().equals(startingPosition))
+			{
+				System.out.println("Tailcode= " + aircrafts.getTailCode());
+				System.out.println("Typecode= " + aircrafts.getTypeCode());
+				System.out.println("Manufacturer= " + aircrafts.getManufacturer());
+				System.out.println("Model= " + aircrafts.getModel()); 
+				System.out.println("Number of seats= " + aircrafts.getSeats());
+				System.out.println("Cabin crew required= " + aircrafts.getCabinCrewRequired());
+				System.out.println("Starting posistion= " + aircrafts.getStartingPosition());
+				System.out.println("");
+				
+				aircraftWithReqPosistion.add(aircrafts);
+			}
+		}	
+		return aircraftWithReqPosistion;
+	}
+
+	/**
+	 * Returns the individual Aircraft with the specified tail code.
+	 * @param tailCode the tail code for which to search
+	 * @return the aircraft with that tail code, or null if not found
+	 */
+	@Override
+	public Aircraft findAircraftByTailCode(String tailCode) 
+	{
+		Aircraft aircraftWithTailCode = new Aircraft();
+		
+		for (Aircraft aircrafts : aircraft)
+		{
+			if (tailCode.equals(aircrafts.getTailCode()))
+			{
+				System.out.println("Tailcode= " + aircrafts.getTailCode());
+				System.out.println("Typecode= " + aircrafts.getTypeCode());
+				System.out.println("Manufacturer= " + aircrafts.getManufacturer());
+				System.out.println("Model= " + aircrafts.getModel());
+				System.out.println("Number of seats= " + aircrafts.getSeats());
+				System.out.println("Cabin crew required= " + aircrafts.getCabinCrewRequired()); 
+				System.out.println("Starting posistion= " + aircrafts.getStartingPosition());
+				System.out.println("");
+				 	
+				aircraftWithTailCode= aircrafts;
+			    return aircraftWithTailCode;
+			}
+		}	
+		//System.out.print(aircraftWithTailCode);
+	    return aircraftWithTailCode;
+	}
+
+	/**
+	 * Returns a List of all the loaded Aircraft with the specified type code
+	 * @param typeCode the type code of the aircraft you wish to find
+	 * @return a List of all the loaded Aircraft with the specified type code
+	 */
+	@Override
+	public List<Aircraft> findAircraftByType(String typeCode) 
+	{
+		List<Aircraft> aircraftWithReqType = new ArrayList<Aircraft>();
+		for (Aircraft aircrafts : aircraft)
+		{
+			if (aircrafts.getTypeCode().equals(typeCode))
+			{
+				System.out.println("Tailcode= " + aircrafts.getTailCode());
+				System.out.println("Typecode= " + aircrafts.getTypeCode());
+				System.out.println("Manufacturer= " + aircrafts.getManufacturer());
+				System.out.println("Model= " + aircrafts.getModel()); 
+				System.out.println("Number of seats= " + aircrafts.getSeats());
+				System.out.println("Cabin crew required= " + aircrafts.getCabinCrewRequired());
+				System.out.println("Starting posistion= " + aircrafts.getStartingPosition());
+				System.out.println("");
+				
+				aircraftWithReqType.add(aircrafts);
+			}
+		}	
+		return aircraftWithReqType;
+	}
+
+	/**
+	 * Returns a List of all the currently loaded aircraft
+	 * @return a List of all the currently loaded aircraft
+	 */
+	@Override
+	public List<Aircraft> getAllAircraft() 
+	{		
+		  for (Aircraft aircrafts : aircraft) 
+		  {
+			  System.out.println("Tailcode= " + aircrafts.getTailCode());
+			  System.out.println("Typecode= " + aircrafts.getTypeCode());
+			  System.out.println("Manufacturer= " + aircrafts.getManufacturer());
+			  System.out.println("Model= " + aircrafts.getModel()); 
+			  System.out.println("Number of seats= " + aircrafts.getSeats());
+			  System.out.println("Cabin crew required= " + aircrafts.getCabinCrewRequired());
+			  System.out.println("Starting posistion= " + aircrafts.getStartingPosition());
+			  System.out.println("");
+		  }
+		 
+		return aircraft;
+	}
+
+	/**
+	 * Returns the number of aircraft currently loaded 
+	 * @return the number of aircraft currently loaded
+	 */
+	@Override
+	public int getNumberOfAircraft()
+	{
+	    System.out.print("Number of Aircraft = "+ aircraft.size());
+		return aircraft.size();
+	}
+
+	/**
+	 * Unloads all of the aircraft currently loaded, ready to start again if needed
+	 */
+	@Override
+	public void reset() 
+	{
+		aircraft.removeAll(aircraft);
+        System.out.print("Aircrafts have been reset."); 
+	}
+
+}
