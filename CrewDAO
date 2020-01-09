@@ -1,0 +1,326 @@
+package solution;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+import baseclasses.Aircraft;
+import baseclasses.CabinCrew;
+import baseclasses.Crew;
+import baseclasses.DataLoadingException;
+import baseclasses.ICrewDAO;
+import baseclasses.Pilot;
+import baseclasses.Pilot.Rank;
+
+import org.json.*;
+
+/**
+ * The CrewDAO is responsible for loading data from JSON-based crew files 
+ * It contains various methods to help the scheduler find the right pilots and cabin crew
+ */
+public class CrewDAO implements ICrewDAO
+{ 	   
+	  List <CabinCrew> cabinCrew = new ArrayList<>();
+	  List <Pilot> pilot = new ArrayList<>();
+	  List <Crew> crew = new ArrayList<>();
+	  
+	  
+	/**
+	 * Loads the crew data from the specified file, adding them to the currently loaded crew
+	 * Multiple calls to this function, perhaps on different files, would thus be cumulative
+	 * @param p A Path pointing to the file from which data could be loaded
+	 * @throws DataLoadingException if anything goes wrong. The exception's "cause" indicates the underlying exception
+	 */
+	@Override
+	public void loadCrewData(Path p) throws DataLoadingException
+	{
+		try 
+		{
+			BufferedReader br = Files.newBufferedReader(p);
+			String json = "";
+			String line = "";
+			
+			while ((line = br.readLine()) !=null)
+			{
+				json = json + line;
+			}
+			
+			JSONObject obj = new JSONObject(json);
+			JSONArray pilotArray= obj.getJSONArray("pilots");
+			JSONArray crewArray= obj.getJSONArray("cabincrew");
+			//System.out.println(pilotArray);
+			//System.out.println(crewArray);
+			
+			for (int i=0; i< pilotArray.length(); i++)
+			{		
+				JSONObject pilotObject = pilotArray.getJSONObject(i);
+				JSONArray typeArray= obj.getJSONArray("pilots").getJSONObject(i).getJSONArray("typeRatings");
+				
+				Pilot pilots = new Pilot();
+                pilots.setForename(pilotObject.getString("forename"));
+                //System.out.println(pilots.getForename());
+                pilots.setSurname(pilotObject.getString("surname"));
+                //System.out.println(pilots.getSurname());
+                pilots.setRank(pilotObject.getEnum( Rank.class, "rank"));
+                //System.out.println(pilots.getRank());
+                pilots.setHomeBase(pilotObject.getString("homebase"));
+                //System.out.println(pilots.getHomeBase());
+                
+                for (int qualifiedFor=0 ; qualifiedFor<typeArray.length(); qualifiedFor++)
+                {
+                	pilots.setQualifiedFor(typeArray.getString(qualifiedFor));
+                }
+                //System.out.println(pilots.getTypeRatings());
+                
+                pilot.add(pilots);
+			 }
+			
+			for (int i=0; i< crewArray.length(); i++)
+			{		
+				JSONObject cabinCrewObject = crewArray.getJSONObject(i);
+				JSONArray crewTypeArray= obj.getJSONArray("cabincrew").getJSONObject(i).getJSONArray("typeRatings");
+
+				CabinCrew crewMember = new CabinCrew();
+                crewMember.setForename(cabinCrewObject.getString("forename"));
+                //System.out.print(" " +crewMember.getForename());
+                crewMember.setSurname(cabinCrewObject.getString("surname"));
+                //System.out.print(" " +crewMember.getSurname());
+                crewMember.setHomeBase(cabinCrewObject.getString("homebase"));               
+                //System.out.print(" " +crewMember.getHomeBase());
+                
+                for (int qualifiedFor=0 ; qualifiedFor<crewTypeArray.length(); qualifiedFor++)
+                {
+                	crewMember.setQualifiedFor(crewTypeArray.getString(qualifiedFor));
+                }
+                
+                //System.out.print(" " +crewMember.getTypeRatings());
+                //System.out.println("");
+                cabinCrew.add(crewMember); 
+			 }
+		}
+		catch (IOException ioe)
+		{
+			throw new DataLoadingException(ioe);
+		}
+		catch (JSONException e)
+		{
+			System.err.println("Problem parsing JSON file: " + e);
+		}
+		   
+	}
+
+
+	/**
+	 * Returns a list of all the cabin crew based at the airport with the specified airport code
+	 * @param airportCode the three-letter airport code of the airport to check for
+	 * @return a list of all the cabin crew based at the airport with the specified airport code
+	 */
+	@Override
+	public List<CabinCrew> findCabinCrewByHomeBase(String airportCode)
+	{
+		List<CabinCrew> crewAtPort = new ArrayList<>();
+		
+		for (CabinCrew membersOfCrew: cabinCrew)
+		{
+			if (membersOfCrew.getHomeBase().equals(airportCode))
+			{
+				crewAtPort.add(membersOfCrew);
+			}			
+		}
+		return crewAtPort;
+	}
+
+	/**
+	 * Returns a list of all the cabin crew based at a specific airport AND qualified to fly a specific aircraft type
+	 * @param typeCode the type of plane to find cabin crew for
+	 * @param airportCode the three-letter airport code of the airport to check for
+	 * @return a list of all the cabin crew based at a specific airport AND qualified to fly a specific aircraft type
+	 */
+	@Override
+	public List<CabinCrew> findCabinCrewByHomeBaseAndTypeRating(String typeCode, String airportCode)
+	{
+		List<CabinCrew> requiredCrew = new ArrayList<>();
+		
+		for (CabinCrew membersOfCrew: cabinCrew)
+		{
+			if (membersOfCrew.isQualifiedFor(typeCode) && membersOfCrew.getHomeBase().equals(airportCode))
+			{
+				requiredCrew.add(membersOfCrew);
+			}			
+		}
+		
+		return requiredCrew;
+	}
+
+	/**
+	 * Returns a list of all the cabin crew currently loaded who are qualified to fly the specified type of plane
+	 * @param typeCode the type of plane to find cabin crew for
+	 * @return a list of all the cabin crew currently loaded who are qualified to fly the specified type of plane
+	 */
+	@Override
+	public List<CabinCrew> findCabinCrewByTypeRating(String typeCode)
+	{
+		List<CabinCrew> qualifiedCrew = new ArrayList<CabinCrew>();
+				
+		for (CabinCrew membersOfCrew: cabinCrew)
+		{
+			if (membersOfCrew.isQualifiedFor(typeCode))
+			{
+				qualifiedCrew.add(membersOfCrew);
+			}			
+		}
+		System.out.println(qualifiedCrew.size());
+
+		return qualifiedCrew;
+	}
+
+	/**
+	 * Returns a list of all the pilots based at the airport with the specified airport code
+	 * @param airportCode the three-letter airport code of the airport to check for
+	 * @return a list of all the pilots based at the airport with the specified airport code
+	 */
+	@Override
+	public List<Pilot> findPilotsByHomeBase(String airportCode) 
+	{
+		List<Pilot> pilotsAtPort = new ArrayList<>();
+		
+		for (Pilot pilots: pilot)
+		{
+			if (pilots.getHomeBase().equals(airportCode))
+			{
+				pilotsAtPort.add(pilots);
+			}			
+		}
+
+		return pilotsAtPort;
+	}
+
+	/**
+	 * Returns a list of all the pilots based at a specific airport AND qualified to fly a specific aircraft type
+	 * @param typeCode the type of plane to find pilots for
+	 * @param airportCode the three-letter airport code of the airport to check for
+	 * @return a list of all the pilots based at a specific airport AND qualified to fly a specific aircraft type
+	 */
+	@Override
+	public List<Pilot> findPilotsByHomeBaseAndTypeRating(String typeCode, String airportCode)
+	{
+		List<Pilot> requiredPilots = new ArrayList<Pilot>();
+		
+		for (Pilot pilots: pilot)
+		{
+			if (pilots.isQualifiedFor(typeCode) && pilots.getHomeBase().contains(airportCode))
+			{
+				requiredPilots.add(pilots);
+			}			
+		}
+		
+		return requiredPilots;
+	}
+
+	/**
+	 * Returns a list of all the pilots currently loaded who are qualified to fly the specified type of plane
+	 * @param typeCode the type of plane to find pilots for
+	 * @return a list of all the pilots currently loaded who are qualified to fly the specified type of plane
+	 */
+	@Override
+	public List<Pilot> findPilotsByTypeRating(String typeCode) 
+	{
+		List<Pilot> pilotsWithReqType = new ArrayList<Pilot>();
+		
+		for (Pilot pilots: pilot)
+		{
+			if (pilots.isQualifiedFor(typeCode))
+			{
+				pilotsWithReqType.add(pilots);
+			}			
+		}
+		return pilotsWithReqType;
+	}
+
+	/**
+	 * Returns a list of all the cabin crew currently loaded
+	 * @return a list of all the cabin crew currently loaded
+	 */
+	@Override
+	public List<CabinCrew> getAllCabinCrew() 
+	{
+		for (CabinCrew cc: cabinCrew)
+		{
+			System.out.print(cc.getForename());
+			System.out.println(" " + cc.getSurname());
+		}
+		return cabinCrew;
+	}
+
+	/**
+	 * Returns a list of all the crew, regardless of type
+	 * @return a list of all the crew, regardless of type
+	 */
+	@Override
+	public List<Crew> getAllCrew() 
+	{
+		crew.addAll(pilot);
+		crew.addAll(cabinCrew);
+		
+		for (Crew allCrew: crew)
+		{
+			System.out.print(allCrew.getForename());
+			System.out.println(" " + allCrew.getSurname());
+		}
+		return crew;
+	}
+
+	/**
+	 * Returns a list of all the pilots currently loaded
+	 * @return a list of all the pilots currently loaded
+	 */
+	@Override
+	public List<Pilot> getAllPilots() 
+	{
+		for (Pilot p: pilot)
+		{
+			System.out.print(p.getForename());
+			System.out.print(" " + p.getSurname());
+			System.out.println(" " + p.getHomeBase());
+			System.out.println(" " + p.getRank());
+			System.out.println(" " + p.getTypeRatings());
+		}
+		return pilot;		
+	}
+
+	@Override
+	public int getNumberOfCabinCrew() 
+	{
+		System.out.println(cabinCrew.size());
+		return cabinCrew.size();
+	}
+
+	/**
+	 * Returns the number of pilots currently loaded
+	 * @return the number of pilots currently loaded
+	 */
+	@Override
+	public int getNumberOfPilots()
+	{
+		System.out.println(pilot.size());
+		return pilot.size();
+	}
+
+	/**
+	 * Unloads all of the crew currently loaded, ready to start again if needed
+	 */
+	@Override
+	public void reset() 
+	{
+		cabinCrew.clear();
+		pilot.clear();
+		crew.clear();
+		
+		System.out.println("Crew data has been reset");
+	}
+
+}
